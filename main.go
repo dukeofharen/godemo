@@ -1,40 +1,46 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"text/template"
 )
 
 type server struct {
-	template *template.Template
+	name string
+}
+
+type greet struct {
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle"`
 }
 
 func main() {
-	t := template.Must(template.ParseFiles("templates/index.html"))
-	s := server{template: t}
+	s := server{name: "Golang hands-on"}
 
-	http.HandleFunc("/", s.handleRoot)
-	http.Handle("/resources/", http.FileServer(http.Dir(".")))
+	http.Handle("/", http.FileServer(http.Dir("./resources/")))
+	http.HandleFunc("/api/greet/", s.titleHandler)
 
 	err := http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
-
-	// sentence := speak("Duco")
-	// fmt.Printf("The parrot says %s\n", sentence)
-
-	// t, e := template.ParseFiles("template.tpl")
-	// if e != nil {
-	// 	panic(e)
-	// }
-
-	// t.Execute(os.Stdout, "Quintor")
 }
 
-func (s *server) handleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf8")
+func (s server) titleHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
 
-	err := s.template.Execute(w, "Vrolijk pasen!")
+	accept := r.Header.Get("Accept")
+
+	if accept == "application/json" {
+		w.Header().Set("Content-Type", "application/json; charset=utf8")
+
+		e := json.NewEncoder(w)
+		err = e.Encode(greet{Title: s.name, Subtitle: "Hello Quintor!"})
+	} else {
+		w.Header().Set("Content-Type", "text/plain; charset=utf8")
+
+		_, err = fmt.Fprint(w, s.name)
+	}
 
 	if err != nil {
 		log.Println(err)
