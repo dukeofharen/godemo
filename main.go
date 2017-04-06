@@ -5,10 +5,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type server struct {
-	name string
+    name string
+    db   *gorm.DB
+}
+    
+type Message struct {
+    ID      uint
+    Name    string
+    Content string
 }
 
 type greet struct {
@@ -27,14 +37,33 @@ type sumResponse struct {
 	Contributers int `json:"contributers"`
 }
 
+type dbRequest struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
+}
+
+type dbResponse struct {
+	Id int `json:"id"`
+}
+
 func main() {
-	s := server{name: "Golang hands-on"}
+	db, err := gorm.Open("mysql", "root:geheim@/godemo")
+	if err != nil {
+		log.Fatal("Could not open database", err)
+	}
+	defer db.Close()
+		
+	db.DropTableIfExists(&Message{})
+	db.AutoMigrate(&Message{})
+		
+	s := server{name: "Golang Hands-on", db: db}
 
 	http.Handle("/", http.FileServer(http.Dir("./resources/")))
 	http.HandleFunc("/api/greet/", s.titleHandler)
 	http.HandleFunc("/api/sum/", s.sumHandler)
+	http.HandleFunc("/api/store/", s.dbHandler)
 
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
 }
 
@@ -79,6 +108,29 @@ func (s server) sumHandler(w http.ResponseWriter, r *http.Request) {
 
 	e := json.NewEncoder(w)
 	err = e.Encode(sumResponse{Answer: answer, Contributers: contributors})
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (s server) dbHandler(w http.ResponseWriter, r *http.Request) {
+	var dreq dbRequest
+	d := json.NewDecoder(r.Body)
+	d.Decode(&dreq)
+
+	m := Message{Name: dreq.Name, Content: dreq.Message}
+	s.db.Create(&m)
+	log.Println("message id", m.ID)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf8")
+
+	e := json.NewEncoder(w)
+	err := e.Encode(dbResponse{Id: int(m.ID)})
+
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func speak(name string) string {
