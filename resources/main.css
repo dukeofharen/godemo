@@ -1,0 +1,15 @@
+body {
+    background-color: #92CD00
+}
+
+header img {
+    display: inline;
+    vertical-align: middle;
+    width: 150px;
+}
+
+header h1 {
+    display: inline;
+    vertical-align: middle;
+    color: #2C6700
+}
