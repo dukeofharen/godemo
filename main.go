@@ -10,10 +10,11 @@ func main() {
 	sentence := speak("Duco")
 	fmt.Printf("The parrot says %s\n", sentence)
 
-	t, e := template.New("helloTemplate").Parse("Hello {{.}}\n")
+	t, e := template.ParseFiles("template.tpl")
 	if e != nil {
 		panic(e)
 	}
+
 	t.Execute(os.Stdout, "Quintor")
 }
 
